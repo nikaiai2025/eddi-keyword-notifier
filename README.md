@@ -1,6 +1,6 @@
 # bbs-keyword-notifier
 
-エッヂ（bbs.eddibb.cc）の板を5分毎に巡回し、キーワードに一致する新着スレのタイトルとURLをDiscordチャンネルへ投稿するCloudflare Worker。
+エッヂ（bbs.eddibb.cc）の板を5分毎に巡回し、キーワードに一致する新着スレのタイトルとURLをDiscordチャンネルへ投稿するCloudflare Worker。複数サーバーに導入でき、キーワードと通知先はサーバーごとに独立している。
 
 ## 構成
 
@@ -9,18 +9,19 @@ GitHub (main) ─ push ─→ GitHub Actions（型チェック → テスト →
                               │
                               ▼
 Cloudflare Worker
-├─ scheduled()  Cron 5分毎: subject.txt取得 → 新着スレ抽出 → キーワード照合 → Webhook投稿
-├─ fetch()      Discord HTTP Interactions: /keyword add|remove|list
-└─ KV (STATE)   keywords: キーワード配列 / lastSeen: 判定済み最大スレ番号
+├─ scheduled()  Cron 5分毎: subject.txt取得 → 新着スレ抽出 → サーバーごとに照合・投稿
+├─ fetch()      Discord HTTP Interactions: /channel set, /keyword add|remove|list
+└─ KV (STATE)   guild:{サーバーID}: キーワード・通知先チャンネル / lastSeen: 判定済み最大スレ番号
 ```
 
 ## 仕様
 
 - 照合対象は**新着スレのタイトルのみ**（部分一致、英字は大文字小文字を区別しない）
-- 各スレは初出時に一度だけ判定するため、同一スレの重複投稿は発生しない
-- キーワード追加時点で既に存在するスレは通知しない
-- 初回実行は基準点の記録のみ行い、通知しない
-- `/keyword` は「サーバー管理」権限を持つメンバーのみ使用可能（サーバー設定 > 連携サービス でロール単位に変更可）
+- 各スレは初出時に一度だけ判定するため、同一スレの重複投稿は発生しない（キーワード追加前のスレは通知しない）
+- サーバー登録の入口は `/channel set`。登録サーバー数は `MAX_GUILDS`（20）まで、キーワードは1サーバーあたり `MAX_KEYWORDS`（20）まで
+- 投稿上限: 1巡回あたり1サーバー5件・全体20件（洪水・サブリクエスト上限対策）
+- 通知先に到達できないサーバー（チャンネル削除・Bot退会等）は自動で登録解除
+- コマンドは「サーバー管理」権限を持つメンバーのみ使用可能（サーバー設定 > 連携サービス でロール単位に変更可）
 
 ## シークレット・環境変数一覧
 
@@ -29,9 +30,8 @@ Cloudflare Worker
 | `CLOUDFLARE_API_TOKEN` | GitHub Secrets | ダッシュボード > プロファイル > APIトークン（下記「APIトークンの権限」参照） |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Secrets | ダッシュボード右サイドバー（または `npx wrangler whoami`） |
 | `DISCORD_PUBLIC_KEY` | Worker Secret | Developer Portal > General Information > Public Key |
-| `DISCORD_WEBHOOK_URL` | Worker Secret | 通知先チャンネルの設定 > 連携サービス > ウェブフック |
+| `DISCORD_BOT_TOKEN` | Worker Secret と `.env` の両方 | Developer Portal > Bot > Token |
 | `DISCORD_APP_ID` | `.env`（ローカルのみ） | Developer Portal > General Information > Application ID |
-| `DISCORD_BOT_TOKEN` | `.env`（ローカルのみ） | Developer Portal > Bot > Token |
 
 - **GitHub Secrets**: `gh secret set <名前>`（またはリポジトリ Settings > Secrets and variables > Actions）
 - **Worker Secret**: `npx wrangler secret put <名前>`。ローカル実行（`wrangler dev`）では `.dev.vars.sample` をコピーした `.dev.vars` が使われる
@@ -51,8 +51,7 @@ Cloudflare Worker
 ### 1. Discord側の準備
 
 1. [Developer Portal](https://discord.com/developers/applications) でアプリを作成する
-2. 通知先チャンネルの設定 > 連携サービス > ウェブフックでWebhook URLを発行する
-3. OAuth2 > URL Generator で scope `applications.commands` のURLを生成し、Botをサーバーに招待する
+2. Bot > Public Bot は普段オフにし、招待URLを配る間だけオンにする
 
 ### 2. Cloudflare側の準備
 
@@ -61,7 +60,7 @@ npm install
 npx wrangler login
 npx wrangler kv namespace create STATE   # 出力された id を wrangler.jsonc に記入
 npx wrangler secret put DISCORD_PUBLIC_KEY
-npx wrangler secret put DISCORD_WEBHOOK_URL
+npx wrangler secret put DISCORD_BOT_TOKEN
 ```
 
 ### 3. デプロイ（GitHub Actions）
@@ -78,14 +77,21 @@ mainへのpushで自動デプロイされる（手動デプロイは `npm run de
 1. `.env.sample` をコピーして `.env` を作成し、値を埋めて `npm run register`
 2. Developer Portal > General Information の **Interactions Endpoint URL** にWorkerのURLを設定する（保存時にDiscordがPING検証を行うため、デプロイ後に設定すること）
 
-### 5. 動作確認
+### 5. サーバーへの導入（サーバーごと）
+
+1. 招待URLでBotを追加する（`<APP_ID>` は Application ID に置換）:
+   `https://discord.com/oauth2/authorize?client_id=<APP_ID>&scope=bot+applications.commands&permissions=3072`
+   （permissions=3072 は「チャンネルを見る」+「メッセージを送信」）
+2. `/channel set` で通知先チャンネルを設定する
+3. `/keyword add <単語>` でキーワードを登録する
+
+## 動作確認・運用
 
 ```sh
-npx wrangler tail   # ログ監視
+npx wrangler tail   # リアルタイムログ
 ```
 
-- Discordで `/keyword add <単語>` → 「追加しました」が返ること
-- 次のCron実行ログでエラーが出ていないこと（subject.txt取得とShift_JISデコードの確認）
+毎巡回で `{"event":"crawl","newThreads":N,"guilds":[{"guildId":...,"hits":[...],"posted":N}]}` がログに出る。ダッシュボードの Worker > ログ（Workers Logs）でも検索できる。
 
 ## 開発
 

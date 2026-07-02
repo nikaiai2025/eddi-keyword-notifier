@@ -5,7 +5,7 @@
  *   .env.sample をコピーして .env を作成し、値を埋めて `npm run register`
  *
  * default_member_permissions: "32" は「サーバー管理」権限。
- * この権限を持たないメンバーには /keyword が表示されない。
+ * この権限を持たないメンバーにはコマンドが表示されない。
  * ロール単位の調整はサーバー設定 > 連携サービス から行う。
  */
 
@@ -19,12 +19,35 @@ if (!appId || !token) {
 
 const commands = [
 	{
-		name: "keyword",
-		description: "巡回キーワードの管理",
+		name: "channel",
+		description: "通知先チャンネルの管理",
 		default_member_permissions: "32",
+		contexts: [0], // サーバー内でのみ使用可（DM 不可）
 		options: [
 			{
 				type: 1, // SUB_COMMAND
+				name: "set",
+				description: "通知先チャンネルを設定する（サーバー登録の入口）",
+				options: [
+					{
+						type: 7, // CHANNEL
+						name: "channel",
+						description: "通知を投稿するチャンネル",
+						required: true,
+						channel_types: [0, 5], // テキスト / アナウンス
+					},
+				],
+			},
+		],
+	},
+	{
+		name: "keyword",
+		description: "このサーバーの巡回キーワードの管理",
+		default_member_permissions: "32",
+		contexts: [0],
+		options: [
+			{
+				type: 1,
 				name: "add",
 				description: "キーワードを追加する",
 				options: [
@@ -52,7 +75,7 @@ const commands = [
 			{
 				type: 1,
 				name: "list",
-				description: "登録済みキーワードの一覧を表示する",
+				description: "通知先と登録済みキーワードの一覧を表示する",
 			},
 		],
 	},

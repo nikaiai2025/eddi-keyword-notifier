@@ -17,9 +17,11 @@
 		"enabled": true
 	},
 	"vars": {
-		"SOURCE_URL": "https://bbs.eddibb.cc/liveedge/subject.txt"
+		"SOURCE_URL": "https://bbs.eddibb.cc/liveedge/subject.txt",
+		"MAX_GUILDS": 20,
+		"MAX_KEYWORDS": 20
 	}
 	// Secrets（wrangler secret put で登録）:
-	//   DISCORD_PUBLIC_KEY  - Developer Portal > General Information の Public Key
-	//   DISCORD_WEBHOOK_URL - 通知先チャンネルの Webhook URL
+	//   DISCORD_PUBLIC_KEY - Developer Portal > General Information の Public Key
+	//   DISCORD_BOT_TOKEN  - Developer Portal > Bot の Token（チャンネル投稿用）
 }

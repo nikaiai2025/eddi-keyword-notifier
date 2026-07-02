@@ -5,5 +5,5 @@
 # Discord Developer Portal > General Information > Public Key
 DISCORD_PUBLIC_KEY=
 
-# 通知先チャンネルの設定 > 連携サービス > ウェブフック で発行した URL
-DISCORD_WEBHOOK_URL=
+# Discord Developer Portal > Bot > Token（チャンネル投稿用）
+DISCORD_BOT_TOKEN=
