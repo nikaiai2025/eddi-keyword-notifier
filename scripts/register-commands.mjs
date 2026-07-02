@@ -2,7 +2,7 @@
  * register-commands.mjs — スラッシュコマンド定義の登録（初回・定義変更時のみ実行）
  *
  * 使い方:
- *   DISCORD_APP_ID と DISCORD_BOT_TOKEN を環境変数に設定して `npm run register`
+ *   .env.sample をコピーして .env を作成し、値を埋めて `npm run register`
  *
  * default_member_permissions: "32" は「サーバー管理」権限。
  * この権限を持たないメンバーには /keyword が表示されない。
