@@ -1,0 +1,21 @@
+{
+	"name": "bbs-keyword-notifier",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-06-01",
+	"triggers": {
+		"crons": ["*/5 * * * *"]
+	},
+	"kv_namespaces": [
+		{
+			"binding": "STATE",
+			// `wrangler kv namespace create STATE` の出力した id に置き換える
+			"id": "REPLACE_WITH_KV_NAMESPACE_ID"
+		}
+	],
+	"vars": {
+		"SOURCE_URL": "https://bbs.eddibb.cc/liveedge/subject.txt"
+	}
+	// Secrets（wrangler secret put で登録）:
+	//   DISCORD_PUBLIC_KEY  - Developer Portal > General Information の Public Key
+	//   DISCORD_WEBHOOK_URL - 通知先チャンネルの Webhook URL
+}
