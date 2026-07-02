@@ -64,11 +64,15 @@ export async function runCrawl(env: Env): Promise<void> {
 	// 初回実行: 現時点を基準点として記録するのみ（既存スレは遡って通知しない）
 	if (lastSeenRaw === null) {
 		await env.STATE.put(LAST_SEEN_KEY, String(max));
+		console.log(JSON.stringify({ event: "crawl:init", baseline: max }));
 		return;
 	}
 
 	const lastSeen = Number(lastSeenRaw);
 	const keywords = await getKeywords(env.STATE);
+	const newCount = entries.filter(
+		(e) => Number(e.threadNumber) > lastSeen,
+	).length;
 	const hits = selectNewMatches(entries, lastSeen, keywords);
 
 	// 重複投稿防止を投稿到達性より優先する: lastSeen を先に進めるため、
@@ -77,6 +81,7 @@ export async function runCrawl(env: Env): Promise<void> {
 		await env.STATE.put(LAST_SEEN_KEY, String(max));
 	}
 
+	let posted = 0;
 	for (const hit of hits) {
 		try {
 			await postWebhook(
@@ -84,8 +89,18 @@ export async function runCrawl(env: Env): Promise<void> {
 				hit.title,
 				buildThreadUrl(env.SOURCE_URL, hit.threadNumber),
 			);
+			posted++;
 		} catch (error) {
 			console.error(`notify failed: thread=${hit.threadNumber}`, error);
 		}
 	}
+
+	console.log(
+		JSON.stringify({
+			event: "crawl",
+			newThreads: newCount,
+			hits: hits.map((h) => h.title),
+			posted,
+		}),
+	);
 }
