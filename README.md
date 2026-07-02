@@ -1,4 +1,4 @@
-# bbs-keyword-notifier
+# eddi-keyword-notifier
 
 エッヂ（bbs.eddibb.cc）の板を5分毎に巡回し、キーワードに一致する新着スレのタイトルとURLをDiscordチャンネルへ投稿するCloudflare Worker。複数サーバーに導入でき、キーワードと通知先はサーバーごとに独立している。
 
@@ -100,3 +100,7 @@ npm test            # 単体テスト
 npm run typecheck   # 型チェック
 npx wrangler dev --test-scheduled   # ローカルで scheduled を手動実行
 ```
+
+## ライセンス
+
+MIT

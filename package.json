@@ -1,5 +1,5 @@
 {
-	"name": "bbs-keyword-notifier",
+	"name": "eddi-keyword-notifier",
 	"private": true,
 	"type": "module",
 	"scripts": {
