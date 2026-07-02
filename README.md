@@ -2,6 +2,16 @@
 
 エッヂ（bbs.eddibb.cc）の板を5分毎に巡回し、キーワードに一致する新着スレのタイトルとURLをDiscordチャンネルへ投稿するCloudflare Worker。複数サーバーに導入でき、キーワードと通知先はサーバーごとに独立している。
 
+## とにかくBOTを追加したい人（先着20サーバー）
+
+自分でホストしなくても、稼働中のBOTをそのままサーバーに追加できます。
+
+1. **[この招待リンク](https://discord.com/oauth2/authorize?client_id=1522262919054622730&permissions=3072&integration_type=0&scope=bot+applications.commands)** からBOTをサーバーに追加（要「サーバー管理」権限）
+2. `/channel set` で通知先チャンネルを指定
+3. `/keyword add <単語>` で通知したい単語を登録（スレタイに部分一致で通知）
+
+登録は先着20サーバーまで。上限に達している場合は `/channel set` 時にお断りメッセージが返ります。
+
 ## 構成
 
 ```
