@@ -26,7 +26,7 @@ Cloudflare Worker
 
 | 名前 | 設定先 | 取得元 |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | GitHub Secrets | ダッシュボード > プロファイル > APIトークン（「Cloudflare Workersを編集する」テンプレート） |
+| `CLOUDFLARE_API_TOKEN` | GitHub Secrets | ダッシュボード > プロファイル > APIトークン（下記「APIトークンの権限」参照） |
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Secrets | ダッシュボード右サイドバー（または `npx wrangler whoami`） |
 | `DISCORD_PUBLIC_KEY` | Worker Secret | Developer Portal > General Information > Public Key |
 | `DISCORD_WEBHOOK_URL` | Worker Secret | 通知先チャンネルの設定 > 連携サービス > ウェブフック |
@@ -36,6 +36,15 @@ Cloudflare Worker
 - **GitHub Secrets**: `gh secret set <名前>`（またはリポジトリ Settings > Secrets and variables > Actions）
 - **Worker Secret**: `npx wrangler secret put <名前>`。ローカル実行（`wrangler dev`）では `.dev.vars.sample` をコピーした `.dev.vars` が使われる
 - **`.env`**: `.env.sample` をコピーして作成。コマンド登録スクリプト（`npm run register`）専用
+
+### APIトークンの権限
+
+「Cloudflare Workersを編集する」テンプレートを開き、以下の4行だけ残して他はすべて削除する（Workersスクリプト権限はアカウント単位が最小粒度のため、Worker単体には絞れない）。アカウントリソースは対象アカウントに限定し、TTLを設定する。
+
+- アカウント / Workers スクリプト / 編集
+- アカウント / アカウント設定 / 読み取り
+- ユーザー / ユーザーの詳細 / 読み取り
+- ユーザー / メンバーシップ / 読み取り
 
 ## セットアップ
 
