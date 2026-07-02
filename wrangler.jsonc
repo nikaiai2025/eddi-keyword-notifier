@@ -1,5 +1,6 @@
 {
-	"name": "bbs-keyword-notifier",
+	// デプロイ先の Worker 名（https://eddi-discord-bot.shika.workers.dev/）
+	"name": "eddi-discord-bot",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-06-01",
 	"triggers": {
