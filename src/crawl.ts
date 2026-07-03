@@ -19,8 +19,10 @@ import {
 } from "./subject-txt";
 
 const LAST_SEEN_KEY = "lastSeen";
-/** 1通知メッセージに載せるヒット件数の上限（Discord の2000文字制限対策） */
-const MAX_HITS_PER_MESSAGE = 5;
+/** Discord メッセージ本文の上限文字数 */
+const MESSAGE_LIMIT = 2000;
+/** 「…ほか N 件」行のための余白 */
+const OVERFLOW_RESERVE = 20;
 
 /** lastSeen より新しく、いずれかのキーワードをタイトルに含むスレをスレ番号昇順で返す。 */
 export function selectNewMatches(
@@ -45,21 +47,28 @@ export function maxThreadNumber(entries: SubjectEntry[]): number {
 /**
  * ヒット一覧を1通のメッセージ本文に整形する。
  * 通知は1巡回・1サーバーにつき最大1メッセージ（Discord API 呼び出し削減のため）。
+ * 2000文字に収まる分まで掲載し、あふれた分は「…ほか N 件」に丸める。
  */
 export function buildNotification(
 	hits: SubjectEntry[],
 	sourceUrl: string,
 ): string {
-	const shown = hits.slice(0, MAX_HITS_PER_MESSAGE);
-	const lines = shown.map(
+	const blocks = hits.map(
 		(h) => `**${h.title}**\n${buildThreadUrl(sourceUrl, h.threadNumber)}`,
 	);
-	const rest = hits.length - shown.length;
-	if (rest > 0) {
-		lines.push(`…ほか ${rest} 件`);
+	const included: string[] = [];
+	let length = 0;
+	for (const block of blocks) {
+		const addition = block.length + (included.length > 0 ? 2 : 0); // 区切りの空行分
+		if (length + addition > MESSAGE_LIMIT - OVERFLOW_RESERVE) break;
+		included.push(block);
+		length += addition;
 	}
-	const content = lines.join("\n\n");
-	return content.length > 2000 ? `${content.slice(0, 1997)}…` : content;
+	const rest = blocks.length - included.length;
+	if (rest > 0) {
+		included.push(`…ほか ${rest} 件`);
+	}
+	return included.join("\n\n");
 }
 
 interface GuildCrawlResult {
@@ -114,7 +123,7 @@ export async function runCrawl(env: Env): Promise<void> {
 					await deleteGuild(env.STATE, guildId);
 					removed = true;
 				} else {
-					posted = Math.min(hits.length, MAX_HITS_PER_MESSAGE);
+					posted = hits.length;
 				}
 			} catch (error) {
 				console.error(`notify failed: guild=${guildId}`, error);

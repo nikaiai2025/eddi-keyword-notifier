@@ -70,12 +70,22 @@ describe("buildNotification", () => {
 		expect(msg).toContain("**スレB**");
 	});
 
-	it("6件以上は5件と「…ほかN件」に丸める", () => {
-		const hits = Array.from({ length: 8 }, (_, i) =>
+	it("2000文字に収まる限り件数制限なく掲載する", () => {
+		const hits = Array.from({ length: 10 }, (_, i) =>
 			entry(String(1000 + i), `スレ${i}`),
 		);
 		const msg = buildNotification(hits, sourceUrl);
-		expect(msg.split("\n\n")).toHaveLength(6); // 5件 + 「ほか」行
-		expect(msg).toContain("…ほか 3 件");
+		expect(msg.split("\n\n")).toHaveLength(10);
+		expect(msg).not.toContain("…ほか");
+	});
+
+	it("2000文字を超える分は「…ほかN件」に丸める", () => {
+		const longTitle = "あ".repeat(100);
+		const hits = Array.from({ length: 30 }, (_, i) =>
+			entry(String(1000 + i), `${longTitle}${i}`),
+		);
+		const msg = buildNotification(hits, sourceUrl);
+		expect(msg.length).toBeLessThanOrEqual(2000);
+		expect(msg).toMatch(/…ほか \d+ 件$/);
 	});
 });
