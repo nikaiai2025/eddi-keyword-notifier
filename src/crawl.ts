@@ -19,10 +19,8 @@ import {
 } from "./subject-txt";
 
 const LAST_SEEN_KEY = "lastSeen";
-/** 1巡回・1サーバーあたりの投稿上限（頻出キーワード登録による洪水防止） */
-const MAX_POSTS_PER_GUILD = 5;
-/** 1巡回あたりの総投稿上限（Workers のサブリクエスト上限対策） */
-const MAX_POSTS_PER_CRAWL = 20;
+/** 1通知メッセージに載せるヒット件数の上限（Discord の2000文字制限対策） */
+const MAX_HITS_PER_MESSAGE = 5;
 
 /** lastSeen より新しく、いずれかのキーワードをタイトルに含むスレをスレ番号昇順で返す。 */
 export function selectNewMatches(
@@ -42,6 +40,26 @@ export function selectNewMatches(
 
 export function maxThreadNumber(entries: SubjectEntry[]): number {
 	return Math.max(...entries.map((e) => Number(e.threadNumber)));
+}
+
+/**
+ * ヒット一覧を1通のメッセージ本文に整形する。
+ * 通知は1巡回・1サーバーにつき最大1メッセージ（Discord API 呼び出し削減のため）。
+ */
+export function buildNotification(
+	hits: SubjectEntry[],
+	sourceUrl: string,
+): string {
+	const shown = hits.slice(0, MAX_HITS_PER_MESSAGE);
+	const lines = shown.map(
+		(h) => `**${h.title}**\n${buildThreadUrl(sourceUrl, h.threadNumber)}`,
+	);
+	const rest = hits.length - shown.length;
+	if (rest > 0) {
+		lines.push(`…ほか ${rest} 件`);
+	}
+	const content = lines.join("\n\n");
+	return content.length > 2000 ? `${content.slice(0, 1997)}…` : content;
 }
 
 interface GuildCrawlResult {
@@ -77,7 +95,6 @@ export async function runCrawl(env: Env): Promise<void> {
 	}
 
 	const guilds = await listGuilds(env.STATE);
-	let budget = MAX_POSTS_PER_CRAWL;
 	const summary: GuildCrawlResult[] = [];
 
 	for (const { guildId, config } of guilds) {
@@ -85,27 +102,22 @@ export async function runCrawl(env: Env): Promise<void> {
 		let posted = 0;
 		let removed = false;
 
-		for (const hit of hits.slice(0, MAX_POSTS_PER_GUILD)) {
-			if (budget <= 0) break;
+		if (hits.length > 0) {
 			try {
-				budget--;
 				const result = await postChannelMessage(
 					env.DISCORD_BOT_TOKEN,
 					config.channelId,
-					`**${hit.title}**\n${buildThreadUrl(env.SOURCE_URL, hit.threadNumber)}`,
+					buildNotification(hits, env.SOURCE_URL),
 				);
 				if (result === "gone") {
 					// 通知先に到達できない（チャンネル削除・Bot退会等）: 登録を解除する
 					await deleteGuild(env.STATE, guildId);
 					removed = true;
-					break;
+				} else {
+					posted = Math.min(hits.length, MAX_HITS_PER_MESSAGE);
 				}
-				posted++;
 			} catch (error) {
-				console.error(
-					`notify failed: guild=${guildId} thread=${hit.threadNumber}`,
-					error,
-				);
+				console.error(`notify failed: guild=${guildId}`, error);
 			}
 		}
 

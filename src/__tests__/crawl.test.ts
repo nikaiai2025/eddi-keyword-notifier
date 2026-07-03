@@ -1,7 +1,7 @@
-/** crawl.test.ts — 新着スレ抽出（キーワード照合・重複防止）のテスト */
+/** crawl.test.ts — 新着スレ抽出（キーワード照合・重複防止）と通知整形のテスト */
 
 import { describe, expect, it } from "vitest";
-import { selectNewMatches } from "../crawl";
+import { buildNotification, selectNewMatches } from "../crawl";
 import type { SubjectEntry } from "../subject-txt";
 
 function entry(threadNumber: string, title: string): SubjectEntry {
@@ -47,5 +47,35 @@ describe("selectNewMatches", () => {
 		];
 		const result = selectNewMatches(unordered, 0, ["野球"]);
 		expect(result.map((e) => e.threadNumber)).toEqual(["1000", "2000", "3000"]);
+	});
+});
+
+describe("buildNotification", () => {
+	const sourceUrl = "https://bbs.eddibb.cc/liveedge/subject.txt";
+
+	it("1件のヒットをタイトルとURLで整形する", () => {
+		const msg = buildNotification([entry("1000", "野球スレ")], sourceUrl);
+		expect(msg).toBe(
+			"**野球スレ**\nhttps://bbs.eddibb.cc/test/read.cgi/liveedge/1000/",
+		);
+	});
+
+	it("複数ヒットは空行区切りで1メッセージにまとめる", () => {
+		const msg = buildNotification(
+			[entry("1000", "スレA"), entry("2000", "スレB")],
+			sourceUrl,
+		);
+		expect(msg.split("\n\n")).toHaveLength(2);
+		expect(msg).toContain("**スレA**");
+		expect(msg).toContain("**スレB**");
+	});
+
+	it("6件以上は5件と「…ほかN件」に丸める", () => {
+		const hits = Array.from({ length: 8 }, (_, i) =>
+			entry(String(1000 + i), `スレ${i}`),
+		);
+		const msg = buildNotification(hits, sourceUrl);
+		expect(msg.split("\n\n")).toHaveLength(6); // 5件 + 「ほか」行
+		expect(msg).toContain("…ほか 3 件");
 	});
 });
