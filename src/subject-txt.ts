@@ -14,6 +14,39 @@ export interface SubjectEntry {
 	resCount: number;
 }
 
+/** 掲示板がエスケープに使う名前付き文字参照（最小集合） */
+const NAMED_ENTITIES: Record<string, string> = {
+	amp: "&",
+	lt: "<",
+	gt: ">",
+	quot: '"',
+	apos: "'",
+};
+
+/**
+ * HTML 文字参照をデコードする。
+ * エッヂは Shift_JIS に無い文字（絵文字等）を数値文字参照（&#N;）で格納する。
+ * 異体字セレクタ（U+FE0F）や ZWJ（U+200D）も個別の参照になるため、
+ * すべて復元すると結合絵文字もそのまま表示できる。
+ */
+export function decodeHtmlEntities(text: string): string {
+	return text.replace(
+		/&(#(?:\d+|[xX][0-9a-fA-F]+)|amp|lt|gt|quot|apos);/g,
+		(match, body: string) => {
+			if (!body.startsWith("#")) return NAMED_ENTITIES[body];
+			const code =
+				body[1] === "x" || body[1] === "X"
+					? parseInt(body.slice(2), 16)
+					: parseInt(body.slice(1), 10);
+			try {
+				return String.fromCodePoint(code);
+			} catch {
+				return match; // 不正なコードポイントはそのまま残す
+			}
+		},
+	);
+}
+
 /** subject.txt のテキストを解析する。不正な行は無視する。 */
 export function parseSubjectTxt(text: string): SubjectEntry[] {
 	return text
@@ -24,7 +57,7 @@ export function parseSubjectTxt(text: string): SubjectEntry[] {
 			if (!match) return null;
 			return {
 				threadNumber: match[1],
-				title: match[2].trim(),
+				title: decodeHtmlEntities(match[2].trim()),
 				resCount: parseInt(match[3], 10),
 			};
 		})
